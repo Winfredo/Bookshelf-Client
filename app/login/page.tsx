@@ -1,9 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import { FiBook, FiUser, FiMail, FiLock, FiEye, FiEyeOff, FiArrowRight } from "react-icons/fi";
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [staySignedIn, setStaySignedIn] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   return (
     <main className="flex min-h-screen h-screen w-screen overflow-hidden">
@@ -53,7 +60,7 @@ export default function LoginPage() {
             {/* Header */}
             <div className="flex flex-col items-center mb-6 sm:mb-8">
               <div className="w-14 h-14 sm:w-16 sm:h-16 mb-3 bg-linear-to-br from-[#041534] to-[#1b2a4a] rounded-2xl flex items-center justify-center shadow-lg">
-                <span className="text-amber-400 text-xl sm:text-2xl">📚</span>
+                <FiBook className="text-amber-400 text-xl sm:text-2xl" />
               </div>
               <h2 className="text-xl sm:text-2xl font-bold bg-linear-to-r from-[#041534] to-[#1b2a4a] bg-clip-text text-transparent">
                 Workspace Login
@@ -64,22 +71,91 @@ export default function LoginPage() {
             </div>
 
             {/* Form */}
-            <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
-              {/* Email */}
+            <form
+              className="space-y-4"
+              onSubmit={(e) => {
+                e.preventDefault();
+                setError(null);
+                if (mode === "signin") {
+                  if (!username.trim() || !password) {
+                    setError("Please enter your username and password.");
+                    return;
+                  }
+                  // TODO: call sign-in API
+                  console.log("Sign in", { username, password, staySignedIn });
+                } else {
+                  if (!username.trim() || !email.trim() || !password) {
+                    setError("Please complete all signup fields.");
+                    return;
+                  }
+                  // basic email pattern
+                  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                  if (!emailPattern.test(email)) {
+                    setError("Please enter a valid email address.");
+                    return;
+                  }
+                  // TODO: call signup API
+                  console.log("Sign up", { username, email, password });
+                }
+              }}
+            >
+              {/* Mode Toggle */}
+              <div className="flex items-center justify-center gap-2 mb-1">
+                <button
+                  type="button"
+                  onClick={() => setMode("signin")}
+                  className={`px-3 py-1 rounded-full text-sm font-semibold ${mode === "signin" ? "bg-[#041534] text-white" : "text-gray-600 bg-white/50"}`}
+                >
+                  Sign In
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMode("signup")}
+                  className={`px-3 py-1 rounded-full text-sm font-semibold ${mode === "signup" ? "bg-[#041534] text-white" : "text-gray-600 bg-white/50"}`}
+                >
+                  Sign Up
+                </button>
+              </div>
+
+              {error && <p className="text-xs text-red-600">{error}</p>}
+
+              {/* Username (shown for both) */}
               <div className="space-y-1.5">
-                <label className="block text-sm font-semibold text-gray-700 ml-1" htmlFor="email">
-                  Email Address
+                <label className="block text-sm font-semibold text-gray-700 ml-1" htmlFor="username">
+                  Username
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">✉️</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"><FiUser /></span>
                   <input
-                    id="email"
-                    type="email"
-                    placeholder="you@bookshelf.com"
+                    id="username"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    type="text"
+                    placeholder="your-username"
                     className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-gray-200 bg-white/90 backdrop-blur-sm focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 transition-all text-sm outline-none shadow-sm hover:shadow-md"
                   />
                 </div>
               </div>
+
+              {/* Email (only signup) */}
+              {mode === "signup" && (
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-semibold text-gray-700 ml-1" htmlFor="email">
+                    Email Address
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"><FiMail /></span>
+                    <input
+                      id="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      type="email"
+                      placeholder="you@bookshelf.com"
+                      className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-gray-200 bg-white/90 backdrop-blur-sm focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 transition-all text-sm outline-none shadow-sm hover:shadow-md"
+                    />
+                  </div>
+                </div>
+              )}
 
               {/* Password */}
               <div className="space-y-1.5">
@@ -87,14 +163,18 @@ export default function LoginPage() {
                   <label className="block text-sm font-semibold text-gray-700" htmlFor="password">
                     Password
                   </label>
-                  <a href="#" className="text-xs font-semibold text-amber-600 hover:text-amber-700 transition-colors hover:underline" onClick={(e) => e.preventDefault()}>
-                    Forgot Password?
-                  </a>
+                  {mode === "signin" && (
+                    <a href="#" className="text-xs font-semibold text-amber-600 hover:text-amber-700 transition-colors hover:underline" onClick={(e) => e.preventDefault()}>
+                      Forgot Password?
+                    </a>
+                  )}
                 </div>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔒</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"><FiLock /></span>
                   <input
                     id="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
                     type={showPassword ? "text" : "password"}
                     placeholder="••••••••"
                     className="w-full pl-9 pr-9 py-2.5 rounded-xl border border-gray-200 bg-white/90 backdrop-blur-sm focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 transition-all text-sm outline-none shadow-sm hover:shadow-md"
@@ -104,30 +184,34 @@ export default function LoginPage() {
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
                   >
-                    {showPassword ? "🙈" : "👁️"}
+                    {showPassword ? <FiEyeOff /> : <FiEye />}
                   </button>
                 </div>
               </div>
 
-              {/* Stay Signed In */}
-              <div className="flex items-center px-1">
-                <input
-                  id="staySignedIn"
-                  type="checkbox"
-                  className="w-3.5 h-3.5 accent-amber-500 rounded border-gray-300"
-                />
-                <label className="ml-2 text-sm text-gray-600 cursor-pointer hover:text-gray-800 transition-colors">
-                  Stay signed in
-                </label>
-              </div>
+              {/* Stay Signed In (signin only) */}
+              {mode === "signin" && (
+                <div className="flex items-center px-1">
+                  <input
+                    id="staySignedIn"
+                    checked={staySignedIn}
+                    onChange={(e) => setStaySignedIn(e.target.checked)}
+                    type="checkbox"
+                    className="w-3.5 h-3.5 accent-amber-500 rounded border-gray-300"
+                  />
+                  <label className="ml-2 text-sm text-gray-600 cursor-pointer hover:text-gray-800 transition-colors">
+                    Stay signed in
+                  </label>
+                </div>
+              )}
 
-              {/* Login Button */}
-              <button
+              {/* Submit Button */}
+                <button
                 type="submit"
                 className="w-full py-2.5 rounded-full bg-linear-to-r from-[#041534] to-[#1b2a4a] text-white font-semibold text-sm shadow-lg hover:shadow-xl active:scale-[0.98] transition-all flex items-center justify-center gap-2 hover:from-[#1b2a4a] hover:to-[#041534]"
               >
-                Login to Workspace
-                <span className="transition-transform group-hover:translate-x-1">→</span>
+                {mode === "signin" ? "Sign In" : "Create Account"}
+                <FiArrowRight className="transition-transform group-hover:translate-x-1" />
               </button>
             </form>
 
