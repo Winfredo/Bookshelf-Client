@@ -364,7 +364,7 @@ export default function StudentDashboard() {
                 Need Help?
               </h3>
               <p className="text-sm text-gray-500 mb-6">
-                Our librarians are here to help you find what you&apos;re
+                Our librarians are here to help you find what you're
                 looking for.
               </p>
               <button className="w-full py-3 bg-white border border-gray-200 rounded-xl text-sm font-semibold text-[#041534] hover:bg-[#041534]/5 transition-all">
