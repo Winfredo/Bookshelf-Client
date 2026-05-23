@@ -273,7 +273,6 @@ export default function LandingPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {testimonials.map((t) => (
-
                 <div
                   key={t.name}
                   className="group relative bg-white/80 backdrop-blur-xl border border-white/50 rounded-3xl p-8 hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 hover:bg-white/90"

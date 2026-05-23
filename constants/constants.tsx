@@ -17,7 +17,7 @@ import {
   NavItem,
   Testimonial,
   Book,
-  BorrowedBook
+  BorrowedBook,
 } from "@/types/type";
 
 export const recentBooks: BookItem[] = [
@@ -195,7 +195,7 @@ export const catalogBooks: Book[] = [
   },
 ];
 
-export const borrowedBooks:BorrowedBook[] = [
+export const borrowedBooks: BorrowedBook[] = [
   {
     id: 1,
     title: "Digital Minimalism",
