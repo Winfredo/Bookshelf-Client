@@ -170,7 +170,7 @@ export default function LibrarianDashboard() {
             </button>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {recentBooks.map((book) => (
+            {recentBooks.map((book:any) => (
               <div
                 key={book.id}
                 className="group relative bg-white/70 backdrop-blur-xl border border-white/30 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
@@ -227,7 +227,7 @@ export default function LibrarianDashboard() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {circulationData.map((row) => (
+                  {circulationData.map((row:any) => (
                     <tr key={row.name} className="hover:bg-white/40 transition-colors">
                       <td className="px-6 md:px-8 py-5">
                         <div className="flex items-center gap-3">
