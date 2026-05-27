@@ -21,10 +21,13 @@ api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 api.interceptors.response.use(
   (response) => response,
   (error: AxiosError) => {
-    if (error.response?.status === 401) {
+    const isAuthPage = ["/login", "/signup"].includes(window.location.pathname);
+
+    if (error.response?.status === 401 && !isAuthPage) {
       clearAuthCookies();
       window.location.href = "/login";
     }
+
     return Promise.reject(error);
   }
 );
