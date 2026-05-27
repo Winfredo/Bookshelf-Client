@@ -42,13 +42,15 @@ export type Testimonial = {
 };
 
 export type Book = {
-  id: number;
+  _id: string;
+  id?: number;
   title: string;
   author: string;
   genre: string;
-  year: number;
-  status: "available" | "borrowed";
-  img: string;
+  year?: number;
+  publishedYear?: number;
+  status: "available" | "borrowed" | string;
+  img?: string;
 };
 
 export type BorrowedBook = {
@@ -60,3 +62,22 @@ export type BorrowedBook = {
     img: string;
     
 }
+
+export type Borrow = {
+  borrowId: string;
+  student: {
+    _id: string;
+    username: string;
+    email: string;
+  };
+  book: {
+    _id: string;
+    title: string;
+    author: string;
+    genre: string;
+  };
+  borrowedAt: string;
+  dueDate: string;
+  returnedAt: string | null;
+  status: "active" | "returned" | "overdue";
+};
