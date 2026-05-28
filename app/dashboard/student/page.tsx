@@ -27,10 +27,25 @@ export default function StudentDashboard() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalBooks, setTotalBooks] = useState(0);
   const [activeTab, setActiveTab] = useState<"catalog" | "my-books" | "borrowed">("catalog");
+  const [borrowView, setBorrowView] = useState<"current" | "overdue" | "history">("current");
   const [userName, setUserName] = useState("Student");
   const [borrowingId, setBorrowingId] = useState<string | null>(null);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
+const [returningId, setReturningId] = useState<string | null>(null);
+
+const handleReturn = async (borrowId: string) => {
+  setReturningId(borrowId);
+  try {
+    await BorrowService.returnBook(borrowId);
+    await fetchBooks();
+    await fetchBorrowedBooks();
+  } catch (error) {
+    console.error("Failed to return book:", error);
+  } finally {
+    setReturningId(null);
+  }
+};
 
   const fetchBooks = async () => {
     setLoading(true);
@@ -92,9 +107,12 @@ export default function StudentDashboard() {
   };
 
   useEffect(() => {
-    const storedName = getCookieValue("username");
-    if (storedName) {
-      setUserName(decodeURIComponent(storedName));
+    let storedName = getCookieValue("username");
+    if (!storedName || storedName === "undefined") {
+      storedName = typeof window !== "undefined" ? localStorage.getItem("username") : null;
+    }
+    if (storedName && storedName !== "undefined") {
+      setUserName(storedName);
     }
   }, []);
 
@@ -317,17 +335,17 @@ export default function StudentDashboard() {
                   <button
                     onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                     disabled={currentPage === 1}
-                    className="px-4 py-2 rounded-xl border border-gray-200 text-sm font-semibold text-[#041534] hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                      className="px-5 py-2 rounded-full bg-white border border-gray-200 shadow-sm text-sm font-semibold text-[#041534] hover:shadow-md disabled:opacity-40 disabled:cursor-not-allowed transition-all"
                   >
                     <PiArrowLeft className="h-4 w-4" /> Previous
                   </button>
-                  <span className="text-sm text-gray-500">
-                    Page {currentPage} of {totalPages}
-                  </span>
+                    <span className="text-sm text-gray-500 px-3 py-1 rounded-full bg-white/60 border border-gray-100">
+                      Page {currentPage} of {totalPages}
+                    </span>
                   <button
                     onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                     disabled={currentPage === totalPages}
-                    className="px-4 py-2 rounded-xl border border-gray-200 text-sm font-semibold text-[#041534] hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                      className="px-5 py-2 rounded-full bg-white border border-gray-200 shadow-sm text-sm font-semibold text-[#041534] hover:shadow-md disabled:opacity-40 disabled:cursor-not-allowed transition-all"
                   >
                     Next <PiArrowRight className="h-4 w-4" />
                   </button>
@@ -335,10 +353,32 @@ export default function StudentDashboard() {
               )}
             </section>
 
-            {activeTab === "catalog" && (
+            {activeTab === "borrowed" && (
               <section id="borrowed">
                 <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-3xl font-bold text-[#041534]">My Borrowed Books</h2>
+                  <div>
+                    <h2 className="text-3xl font-bold text-[#041534]">My Borrowed Books</h2>
+                    <div className="mt-3 flex gap-2">
+                      <button
+                        onClick={() => setBorrowView("current")}
+                        className={`text-sm px-3 py-1 rounded-full font-semibold transition-all ${borrowView === "current" ? "bg-amber-100 text-amber-900" : "bg-white/60 text-gray-600 hover:bg-gray-50"}`}
+                      >
+                        Current
+                      </button>
+                      <button
+                        onClick={() => setBorrowView("overdue")}
+                        className={`text-sm px-3 py-1 rounded-full font-semibold transition-all ${borrowView === "overdue" ? "bg-red-100 text-red-700" : "bg-white/60 text-gray-600 hover:bg-gray-50"}`}
+                      >
+                        Overdue
+                      </button>
+                      <button
+                        onClick={() => setBorrowView("history")}
+                        className={`text-sm px-3 py-1 rounded-full font-semibold transition-all ${borrowView === "history" ? "bg-gray-100 text-gray-800" : "bg-white/60 text-gray-600 hover:bg-gray-50"}`}
+                      >
+                        History
+                      </button>
+                    </div>
+                  </div>
                 </div>
                 {borrowedBooks.length === 0 ? (
                   <div className="text-center py-16 bg-white/70 backdrop-blur-xl border border-white/30 rounded-3xl">
@@ -348,21 +388,46 @@ export default function StudentDashboard() {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {borrowedBooks.map((entry) => (
-                      <article key={entry.borrowId} className="bg-white/70 backdrop-blur-xl border border-white/30 rounded-3xl p-4 shadow-sm flex flex-col sm:flex-row gap-4">
-                        <div className="w-16 h-20 rounded-2xl bg-amber-100 flex items-center justify-center shrink-0">
-                          <PiBookOpenText className="h-7 w-7 text-[#041534]" />
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-sm font-semibold text-[#041534]">{entry.book.title}</p>
-                          <p className="text-xs text-gray-500 mt-1">by {entry.book.author}</p>
-                          <p className="text-xs text-gray-400 mt-2">Due: {new Date(entry.dueDate).toLocaleDateString()}</p>
-                        </div>
-                        <span className="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-900 self-start sm:ml-auto">
-                          {entry.status}
-                        </span>
-                      </article>
-                    ))}
+                    {borrowedBooks
+                      .filter((entry) => {
+                        if (borrowView === "overdue") return entry.status === "overdue";
+                        if (borrowView === "current") return entry.status !== "returned";
+                        return true; // history -> show all
+                      })
+                      .map((entry) => (
+  <article key={entry.borrowId} className="bg-white/70 backdrop-blur-xl border border-white/30 rounded-3xl p-4 shadow-sm flex flex-col sm:flex-row gap-4">
+    <div className="w-16 h-20 rounded-2xl bg-amber-100 flex items-center justify-center shrink-0">
+      <PiBookOpenText className="h-7 w-7 text-[#041534]" />
+    </div>
+    <div className="flex-1">
+      <p className="text-sm font-semibold text-[#041534]">{entry.book.title}</p>
+      <p className="text-xs text-gray-500 mt-1">by {entry.book.author}</p>
+      <p className="text-xs text-gray-400 mt-2">
+        Due: {new Date(entry.dueDate).toLocaleDateString()}
+      </p>
+    </div>
+    <div className="flex flex-col items-end gap-2 self-start sm:ml-auto">
+      <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
+        entry.status === "overdue"
+          ? "bg-red-100 text-red-700"
+          : entry.status === "returned"
+          ? "bg-green-100 text-green-700"
+          : "bg-amber-100 text-amber-900"
+      }`}>
+        {entry.status}
+      </span>
+      {entry.status !== "returned" && (
+        <button
+          onClick={() => handleReturn(entry.borrowId)}
+          disabled={returningId === entry.borrowId}
+          className="text-xs font-semibold text-[#835500] hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {returningId === entry.borrowId ? "Returning..." : "Return"}
+        </button>
+      )}
+    </div>
+  </article>
+))}
                   </div>
                 )}
               </section>
@@ -374,13 +439,15 @@ export default function StudentDashboard() {
             <div className="bg-white/70 backdrop-blur-xl border border-white/30 p-8 rounded-4xl shadow-sm">
               <h3 className="text-xl font-semibold text-[#041534] mb-6">Quick Actions</h3>
               <div className="space-y-3">
-                {[
-                  { icon: <PiBookOpenText className="h-5 w-5 text-[#041534]" />, label: "Borrowing History" },
-                  { icon: <PiBellSimpleRinging className="h-5 w-5 text-[#041534]" />, label: "Due Date Alerts" },
-                  { icon: <PiEnvelopeSimple className="h-5 w-5 text-[#041534]" />, label: "Contact Librarian" },
-                ].map((action) => (
+                {(
+                  [
+                    { icon: <PiBookOpenText className="h-5 w-5 text-[#041534]" />, label: "Borrowing History", onClick: () => { setActiveTab("borrowed"); setBorrowView("history"); document.getElementById("borrowed")?.scrollIntoView({ behavior: "smooth", block: "start" }); } },
+                    { icon: <PiBellSimpleRinging className="h-5 w-5 text-[#041534]" />, label: "Due Date Alerts", onClick: () => { setActiveTab("borrowed"); setBorrowView("overdue"); document.getElementById("borrowed")?.scrollIntoView({ behavior: "smooth", block: "start" }); } },
+                  ] as { icon: React.ReactNode; label: string; onClick?: () => void }[]
+                ).map((action) => (
                   <button
                     key={action.label}
+                    onClick={action.onClick}
                     className="w-full flex items-center gap-4 p-4 rounded-2xl hover:bg-[#041534]/5 transition-all group"
                   >
                     <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-lg shrink-0">
@@ -405,7 +472,7 @@ export default function StudentDashboard() {
             <div className="bg-white/70 backdrop-blur-xl border border-white/30 p-8 rounded-4xl shadow-sm">
               <h3 className="text-xl font-semibold text-[#041534] mb-2">Need Help?</h3>
               <p className="text-sm text-gray-500 mb-6">
-                Our librarians are here to help you find what you&apos;re looking for.
+                Our librarians are here to help you find what you're looking for.
               </p>
               <button className="w-full py-3 bg-white border border-gray-200 rounded-xl text-sm font-semibold text-[#041534] hover:bg-[#041534]/5 transition-all">
                 Chat with Us
@@ -414,23 +481,6 @@ export default function StudentDashboard() {
           </div>
         </div>
       </main>
-
-      {/* Footer */}
-      <footer className="w-full mt-auto bg-[#eeeeee] border-t border-gray-200">
-        <div className="flex flex-col md:flex-row justify-between items-center px-6 md:px-16 py-12 max-w-360 mx-auto gap-6">
-          <div className="text-center md:text-left">
-            <span className="text-xl font-bold text-[#041534]">Bookshelf</span>
-            <p className="text-sm text-gray-500 mt-1">© 2024 Bookshelf Management System</p>
-          </div>
-          <div className="flex flex-wrap justify-center gap-8">
-            {["Privacy Policy", "Terms of Service", "Library Hours", "Contact Us"].map((link) => (
-              <a key={link} href="#" className="text-sm text-gray-500 hover:text-[#041534] transition-all underline decoration-[#835500] underline-offset-4">
-                {link}
-              </a>
-            ))}
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }
