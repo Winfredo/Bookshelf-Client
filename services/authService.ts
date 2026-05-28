@@ -54,6 +54,9 @@ class AuthService {
     document.cookie = "refreshToken=; path=/; max-age=0";
     document.cookie = "userRole=; path=/; max-age=0";
     document.cookie = "username=; path=/; max-age=0";
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("username");
+    }
     window.location.href = "/login";
   }
 
