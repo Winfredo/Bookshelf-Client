@@ -7,7 +7,6 @@ import {
   PiMagnifyingGlass,
   PiBookOpenText,
   PiBooks,
-  PiEnvelopeSimple,
   PiArrowRight,
   PiArrowLeft,
 } from "react-icons/pi";
