@@ -29,7 +29,7 @@ export interface BookPayload {
   title: string;
   author: string;
   genre: string;
-  year: number;
+  publishedYear: number;
   status?: "available" | "borrowed";
   img?: string;
 }
