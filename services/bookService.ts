@@ -46,7 +46,7 @@ class BookService {
   }
 
   static async createBook(payload: BookPayload): Promise<BookResponse> {
-    const response = await api.post("/books", payload);
+    const response = await api.post("/books/new", payload);
     return response.data;
   }
 
