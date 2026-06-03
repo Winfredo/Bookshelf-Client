@@ -514,7 +514,7 @@ export default function LibrarianDashboard() {
               <div className="text-center py-20 text-gray-400">
                 <PiUsers className="h-12 w-12 mx-auto mb-4" />
                 <p className="text-lg font-semibold">No members found</p>
-                <p className="text-sm mt-1">Members API endpoint needed — add GET /users to your backend</p>
+                {/* <p className="text-sm mt-1">Members API endpoint needed — add GET /users to your backend</p> */}
               </div>
             ) : (
               <div className="bg-white/70 backdrop-blur-xl border border-white/30 rounded-4xl overflow-hidden shadow-sm">
