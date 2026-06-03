@@ -12,6 +12,7 @@ import {
   PiX,
   PiWarning,
   PiArrowLeft,
+  PiHandCoins,
   PiArrowRight,
   PiPencil,
   PiTrash,
@@ -222,7 +223,7 @@ export default function LibrarianDashboard() {
     { id: "dashboard" as Tab, label: "Dashboard", icon: <PiHouse className="h-5 w-5" /> },
     { id: "inventory" as Tab, label: "Inventory", icon: <PiBooks className="h-5 w-5" /> },
     { id: "members" as Tab, label: "Members", icon: <PiUsers className="h-5 w-5" /> },
-    { id: "borrows" as Tab, label: "Borrows", icon: <PiArrowLeft className="h-5 w-5" /> },
+    { id: "borrows" as Tab, label: "Borrows", icon: <PiHandCoins className="h-5 w-5" /> },
   ];
 
   return (
