@@ -21,16 +21,10 @@ import {
 import AuthService from "@/services/authService";
 import BookService from "@/services/bookService";
 import BorrowService from "@/services/borrowService";
-import { Book, Borrow } from "@/types/type";
+import UserService, { User } from "@/services/userService";
+import { Book, Borrow, Member } from "@/types/type";
 
 type Tab = "dashboard" | "inventory" | "members" | "borrows";
-
-interface Member {
-  _id: string;
-  username: string;
-  email: string;
-  role: string;
-}
 
 export default function LibrarianDashboard() {
   const [activeTab, setActiveTab] = useState<Tab>("dashboard");
@@ -131,22 +125,18 @@ export default function LibrarianDashboard() {
   };
 
   // Fetch members
-  const fetchMembers = async () => {
-    setMembersLoading(true);
-    try {
-      const result = await fetch("http://localhost:4000/users", {
-        headers: {
-          Authorization: `Bearer ${document.cookie.match(/accessToken=([^;]+)/)?.[1]}`,
-        },
-      });
-      const data = await result.json();
-      setMembers(data.users || []);
-    } catch (error) {
-      console.error("Members fetch failed:", error);
-    } finally {
-      setMembersLoading(false);
-    }
-  };
+const fetchMembers = async () => {
+  setMembersLoading(true);
+  try {
+    const response = await UserService.getAllUsers();
+    console.log("Members response:", response); // check what comes back
+    setMembers(response.users || []); // use .users not .data
+  } catch (error) {
+    console.error("Members fetch failed:", error);
+  } finally {
+    setMembersLoading(false);
+  }
+};
 
   useEffect(() => {
     fetchDashboardData();
@@ -315,7 +305,7 @@ export default function LibrarianDashboard() {
             <section className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-10">
               {[
                 { label: "Total Books", value: totalBooks, color: "border-r-[#041534]", icon: <PiBookOpen className="h-5 w-5 text-[#041534]" /> },
-                { label: "Active Borrows", value: activeBorrows, color: "border-r-[#835500]", icon: <PiArrowLeft className="h-5 w-5 text-[#835500]" /> },
+                { label: "Active Borrows", value: activeBorrows, color: "border-r-[#835500]", icon: <PiHandCoins className="h-5 w-5 text-[#835500]" /> },
                 { label: "Overdue Borrows", value: overdueBorrows, color: "border-r-red-500", icon: <PiWarning className="h-5 w-5 text-red-500" /> },
               ].map((stat) => (
                 <div key={stat.label} className={`bg-white/70 backdrop-blur-xl border border-white/30 ${stat.color} border-r-4 p-6 rounded-4xl shadow-sm`}>
