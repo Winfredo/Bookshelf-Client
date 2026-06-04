@@ -81,3 +81,10 @@ export type Borrow = {
   returnedAt: string | null;
   status: "active" | "returned" | "overdue";
 };
+
+export type Member = {
+  _id: string;
+  username: string;
+  email: string;
+  role: string;
+};
