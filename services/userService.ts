@@ -1,4 +1,6 @@
 import api from "@/lib/axios";
+import { Member } from "@/types/type";
+
 
 export interface User {
   _id: string;
@@ -10,7 +12,7 @@ export interface User {
 export interface UsersResponse {
   success: boolean;
   count: number;
-  data: User[];
+  users: Member[];
 }
 
 class UserService {
