@@ -8,12 +8,17 @@ import {
   PiBooks,
   PiArrowRight,
   PiArrowLeft,
+  PiCheckCircle,
+  PiWarningCircle,
+  PiX,
 } from "react-icons/pi";
+
 import AuthService from "@/services/authService";
 import BookService from "@/services/bookService";
 import BorrowService from "@/services/borrowService";
 import { getCookieValue } from "@/lib/auth";
 import { Book, Borrow } from "@/types/type";
+import { isAxiosError } from "axios";
 
 export default function StudentDashboard() {
   const [books, setBooks] = useState<Book[]>([]);
@@ -24,26 +29,42 @@ export default function StudentDashboard() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalBooks, setTotalBooks] = useState(0);
-  const [activeTab, setActiveTab] = useState<"catalog" | "my-books" | "borrowed">("catalog");
-  const [borrowView, setBorrowView] = useState<"current" | "overdue" | "history">("current");
+  const [activeTab, setActiveTab] = useState<
+    "catalog" | "my-books" | "borrowed"
+  >("catalog");
+  const [borrowView, setBorrowView] = useState<
+    "current" | "overdue" | "history"
+  >("current");
   const [userName, setUserName] = useState("Student");
   const [borrowingId, setBorrowingId] = useState<string | null>(null);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
-const [returningId, setReturningId] = useState<string | null>(null);
+  const [returningId, setReturningId] = useState<string | null>(null);
+  const [toast, setToast] = useState<{
+    message: string;
+    type: "success" | "error";
+  } | null>(null);
 
-const handleReturn = async (borrowId: string) => {
-  setReturningId(borrowId);
-  try {
-    await BorrowService.returnBook(borrowId);
-    await fetchBooks();
-    await fetchBorrowedBooks();
-  } catch (error) {
-    console.error("Failed to return book:", error);
-  } finally {
-    setReturningId(null);
-  }
-};
+  const handleReturn = async (borrowId: string) => {
+    setReturningId(borrowId);
+    try {
+      await BorrowService.returnBook(borrowId);
+      await fetchBooks();
+      await fetchBorrowedBooks();
+      setToast({ message: "Book returned successfully!", type: "success" });
+    } catch (error: unknown) {
+      if (isAxiosError(error)) {
+        setToast({
+          message: error.response?.data?.message || "Failed to return book",
+          type: "error",
+        });
+      } else {
+        setToast({ message: "Failed to return book", type: "error" });
+      }
+    } finally {
+      setReturningId(null);
+    }
+  };
 
   const fetchBooks = async () => {
     setLoading(true);
@@ -66,12 +87,20 @@ const handleReturn = async (borrowId: string) => {
 
   const fetchBorrowedBooks = async () => {
     try {
+      setBorrowedBooks([]); // clear first before fetching
       const result = await BorrowService.getMyBorrows();
       setBorrowedBooks(result.borrows || []);
     } catch (error) {
       console.error("Failed to fetch borrowed books:", error);
     }
   };
+
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
 
   // fetch on mount and when filters change
   useEffect(() => {
@@ -88,17 +117,34 @@ const handleReturn = async (borrowId: string) => {
     return () => clearTimeout(timer);
   }, [search]);
 
-  const visibleBooks = activeTab === "borrowed" ? books.filter((book) => book.status === "borrowed") : books;
+  useEffect(() => {
+    return () => {
+      setBorrowedBooks([]);
+      setBooks([]);
+    };
+  }, []);
+
+  const visibleBooks =
+    activeTab === "borrowed"
+      ? books.filter((book) => book.status === "borrowed")
+      : books;
 
   const handleBorrow = async (bookId: string) => {
     setBorrowingId(bookId);
-
     try {
       await BorrowService.borrowBook(bookId);
       await fetchBooks();
       await fetchBorrowedBooks();
-    } catch (error) {
-      console.error("Failed to borrow book:", error);
+      setToast({ message: "Book borrowed successfully!", type: "success" });
+    } catch (error: unknown) {
+      if (isAxiosError(error)) {
+        setToast({
+          message: error.response?.data?.message || "Failed to borrow book",
+          type: "error",
+        });
+      } else {
+        setToast({ message: "Failed to borrow book", type: "error" });
+      }
     } finally {
       setBorrowingId(null);
     }
@@ -107,7 +153,8 @@ const handleReturn = async (borrowId: string) => {
   useEffect(() => {
     let storedName = getCookieValue("username");
     if (!storedName || storedName === "undefined") {
-      storedName = typeof window !== "undefined" ? localStorage.getItem("username") : null;
+      storedName =
+        typeof window !== "undefined" ? localStorage.getItem("username") : null;
     }
     if (storedName && storedName !== "undefined") {
       setUserName(storedName);
@@ -116,7 +163,10 @@ const handleReturn = async (borrowId: string) => {
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+      if (
+        profileMenuRef.current &&
+        !profileMenuRef.current.contains(event.target as Node)
+      ) {
         setProfileMenuOpen(false);
       }
     };
@@ -127,6 +177,33 @@ const handleReturn = async (borrowId: string) => {
 
   return (
     <div className="bg-[#FDFCFB] min-h-screen flex flex-col">
+      {/* Toast */}
+      {toast && (
+        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-9999">
+          <div
+            className={`px-6 py-3 rounded-xl shadow-lg flex items-center gap-3 backdrop-blur-md ${
+              toast.type === "success"
+                ? "bg-green-500 text-white"
+                : "bg-red-500 text-white"
+            }`}
+          >
+            <span className="text-sm">
+              {toast.type === "success" ? (
+                <PiCheckCircle className="h-5 w-5" />
+              ) : (
+                <PiWarningCircle className="h-5 w-5" />
+              )}
+            </span>
+            <span className="text-sm font-medium">{toast.message}</span>
+            <button
+              onClick={() => setToast(null)}
+              className="ml-2 text-white/80 hover:text-white"
+            >
+              <PiX className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Navbar */}
       <nav className="fixed top-0 w-full z-50 bg-white/70 backdrop-blur-xl border-b border-white/30 shadow-sm flex justify-between items-center px-6 md:px-16 h-20">
@@ -135,7 +212,9 @@ const handleReturn = async (borrowId: string) => {
             type="button"
             onClick={() => {
               setActiveTab("catalog");
-              document.getElementById("catalog")?.scrollIntoView({ behavior: "smooth", block: "start" });
+              document
+                .getElementById("catalog")
+                ?.scrollIntoView({ behavior: "smooth", block: "start" });
             }}
             className="text-xl font-bold text-[#041534] hover:text-[#835500] transition-colors"
           >
@@ -166,7 +245,10 @@ const handleReturn = async (borrowId: string) => {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <button className="p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors" aria-label="Notifications">
+          <button
+            className="p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors"
+            aria-label="Notifications"
+          >
             <PiBellSimpleRinging className="h-5 w-5" />
           </button>
           <div className="relative" ref={profileMenuRef}>
@@ -199,23 +281,20 @@ const handleReturn = async (borrowId: string) => {
       </nav>
 
       <main className="mt-20 pt-12 pb-24 px-6 md:px-16 max-w-360 mx-auto w-full">
-
         {/* Hero */}
         <section className="mb-12">
           <h1 className="text-4xl md:text-5xl font-bold text-[#041534] mb-2">
             Welcome back, {userName}
           </h1>
           <p className="text-lg text-gray-500">
-            Find your next favorite story at{" "}
-            <span className="text-[#835500] font-bold">Bookshelf</span>.
+            Find your next favorite story at
+            <span className="text-[#835500] font-bold"> Bookshelf</span>.
           </p>
         </section>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
-
           {/* Left Column */}
           <div className="lg:col-span-8 space-y-16">
-
             {/* Search & Filter */}
             <section id="catalog">
               <div className="bg-white/70 backdrop-blur-xl border border-white/30 p-6 rounded-3xl shadow-sm mb-8">
@@ -253,7 +332,11 @@ const handleReturn = async (borrowId: string) => {
               <div className="flex justify-between items-center mb-6">
                 <div>
                   <h2 className="text-3xl font-bold text-[#041534]">
-                    {activeTab === "borrowed" ? "Borrowed Books" : activeTab === "my-books" ? "My Books" : "Book Catalog"}
+                    {activeTab === "borrowed"
+                      ? "Borrowed Books"
+                      : activeTab === "my-books"
+                        ? "My Books"
+                        : "Book Catalog"}
                   </h2>
                   <p className="text-sm text-gray-500 mt-1">
                     {activeTab === "borrowed"
@@ -263,14 +346,19 @@ const handleReturn = async (borrowId: string) => {
                         : "Browse the full catalog and manage your reading list."}
                   </p>
                 </div>
-                <span className="text-sm text-gray-500">{visibleBooks.length} books</span>
+                <span className="text-sm text-gray-500">
+                  {visibleBooks.length} books
+                </span>
               </div>
 
               {/* Loading State */}
               {loading ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                   {[1, 2, 3, 4, 5, 6].map((n) => (
-                    <div key={n} className="bg-white/70 border border-white/30 p-4 rounded-3xl animate-pulse">
+                    <div
+                      key={n}
+                      className="bg-white/70 border border-white/30 p-4 rounded-3xl animate-pulse"
+                    >
                       <div className="aspect-3/4 bg-gray-200 rounded-2xl mb-4"></div>
                       <div className="h-4 bg-gray-200 rounded mb-2"></div>
                       <div className="h-3 bg-gray-100 rounded mb-4 w-2/3"></div>
@@ -280,9 +368,13 @@ const handleReturn = async (borrowId: string) => {
                 </div>
               ) : visibleBooks.length === 0 ? (
                 <div className="text-center py-20 text-gray-400">
-                  <p className="text-5xl mb-4"><PiBookOpenText className="mx-auto" /></p>
+                  <p className="text-5xl mb-4">
+                    <PiBookOpenText className="mx-auto" />
+                  </p>
                   <p className="text-lg font-semibold">No books found</p>
-                  <p className="text-sm mt-1">Try a different search or filter</p>
+                  <p className="text-sm mt-1">
+                    Try a different search or filter
+                  </p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -292,18 +384,28 @@ const handleReturn = async (borrowId: string) => {
                       className="bg-white/70 backdrop-blur-xl border border-white/30 p-4 rounded-3xl hover:-translate-y-1 transition-all duration-300 flex flex-col group shadow-sm"
                     >
                       <div className="relative aspect-3/4 rounded-2xl overflow-hidden shadow-md mb-4 bg-gray-100 flex items-center justify-center">
-                        <span className="text-6xl"><PiBookOpenText className="h-14 w-14 text-[#041534]/40" /></span>
-                        <div className={`absolute top-3 right-3 backdrop-blur-md text-xs font-bold px-3 py-1 rounded-full ${
-                          book.status === "available"
-                            ? "bg-amber-400/90 text-amber-900"
-                            : "bg-gray-200/90 text-gray-600"
-                        }`}>
-                          {book.status === "available" ? "Available" : "Borrowed"}
+                        <span className="text-6xl">
+                          <PiBookOpenText className="h-14 w-14 text-[#041534]/40" />
+                        </span>
+                        <div
+                          className={`absolute top-3 right-3 backdrop-blur-md text-xs font-bold px-3 py-1 rounded-full ${
+                            book.status === "available"
+                              ? "bg-amber-400/90 text-amber-900"
+                              : "bg-gray-200/90 text-gray-600"
+                          }`}
+                        >
+                          {book.status === "available"
+                            ? "Available"
+                            : "Borrowed"}
                         </div>
                       </div>
                       <div className="grow">
-                        <h3 className="text-sm font-semibold text-[#041534] line-clamp-1">{book.title}</h3>
-                        <p className="text-xs text-gray-500 mt-1">{book.author}</p>
+                        <h3 className="text-sm font-semibold text-[#041534] line-clamp-1">
+                          {book.title}
+                        </h3>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {book.author}
+                        </p>
                         <div className="flex justify-between items-center mt-2 text-xs text-gray-400">
                           <span>{book.genre}</span>
                           <span>{book.publishedYear}</span>
@@ -318,7 +420,10 @@ const handleReturn = async (borrowId: string) => {
                           {borrowingId === book._id ? "Borrowing..." : "Borrow"}
                         </button>
                       ) : (
-                        <button disabled className="mt-4 w-full bg-gray-100 text-gray-400 py-2.5 rounded-xl text-sm font-semibold cursor-not-allowed">
+                        <button
+                          disabled
+                          className="mt-4 w-full bg-gray-100 text-gray-400 py-2.5 rounded-xl text-sm font-semibold cursor-not-allowed"
+                        >
                           Unavailable
                         </button>
                       )}
@@ -333,17 +438,19 @@ const handleReturn = async (borrowId: string) => {
                   <button
                     onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                     disabled={currentPage === 1}
-                      className="px-5 py-2 rounded-full bg-white border border-gray-200 shadow-sm text-sm font-semibold text-[#041534] hover:shadow-md disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                    className="px-5 py-2 rounded-full bg-white border border-gray-200 shadow-sm text-sm font-semibold text-[#041534] hover:shadow-md disabled:opacity-40 disabled:cursor-not-allowed transition-all"
                   >
                     <PiArrowLeft className="h-4 w-4" /> Previous
                   </button>
-                    <span className="text-sm text-gray-500 px-3 py-1 rounded-full bg-white/60 border border-gray-100">
-                      Page {currentPage} of {totalPages}
-                    </span>
+                  <span className="text-sm text-gray-500 px-3 py-1 rounded-full bg-white/60 border border-gray-100">
+                    Page {currentPage} of {totalPages}
+                  </span>
                   <button
-                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    onClick={() =>
+                      setCurrentPage((p) => Math.min(totalPages, p + 1))
+                    }
                     disabled={currentPage === totalPages}
-                      className="px-5 py-2 rounded-full bg-white border border-gray-200 shadow-sm text-sm font-semibold text-[#041534] hover:shadow-md disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                    className="px-5 py-2 rounded-full bg-white border border-gray-200 shadow-sm text-sm font-semibold text-[#041534] hover:shadow-md disabled:opacity-40 disabled:cursor-not-allowed transition-all"
                   >
                     Next <PiArrowRight className="h-4 w-4" />
                   </button>
@@ -355,7 +462,9 @@ const handleReturn = async (borrowId: string) => {
               <section id="borrowed">
                 <div className="flex justify-between items-center mb-6">
                   <div>
-                    <h2 className="text-3xl font-bold text-[#041534]">My Borrowed Books</h2>
+                    <h2 className="text-3xl font-bold text-[#041534]">
+                      My Borrowed Books
+                    </h2>
                     <div className="mt-3 flex gap-2">
                       <button
                         onClick={() => setBorrowView("current")}
@@ -380,52 +489,72 @@ const handleReturn = async (borrowId: string) => {
                 </div>
                 {borrowedBooks.length === 0 ? (
                   <div className="text-center py-16 bg-white/70 backdrop-blur-xl border border-white/30 rounded-3xl">
-                    <p className="text-5xl mb-4"><PiBooks className="mx-auto" /></p>
-                    <p className="text-lg font-semibold text-[#041534]">No borrowed books yet</p>
-                    <p className="text-sm text-gray-500 mt-1">Browse the catalog and borrow a book</p>
+                    <p className="text-5xl mb-4">
+                      <PiBooks className="mx-auto" />
+                    </p>
+                    <p className="text-lg font-semibold text-[#041534]">
+                      No borrowed books yet
+                    </p>
+                    <p className="text-sm text-gray-500 mt-1">
+                      Browse the catalog and borrow a book
+                    </p>
                   </div>
                 ) : (
                   <div className="space-y-4">
                     {borrowedBooks
                       .filter((entry) => {
-                        if (borrowView === "overdue") return entry.status === "overdue";
-                        if (borrowView === "current") return entry.status !== "returned";
+                        if (borrowView === "overdue")
+                          return entry.status === "overdue";
+                        if (borrowView === "current")
+                          return entry.status !== "returned";
                         return true; // history -> show all
                       })
                       .map((entry) => (
-  <article key={entry.borrowId} className="bg-white/70 backdrop-blur-xl border border-white/30 rounded-3xl p-4 shadow-sm flex flex-col sm:flex-row gap-4">
-    <div className="w-16 h-20 rounded-2xl bg-amber-100 flex items-center justify-center shrink-0">
-      <PiBookOpenText className="h-7 w-7 text-[#041534]" />
-    </div>
-    <div className="flex-1">
-      <p className="text-sm font-semibold text-[#041534]">{entry.book.title}</p>
-      <p className="text-xs text-gray-500 mt-1">by {entry.book.author}</p>
-      <p className="text-xs text-gray-400 mt-2">
-        Due: {new Date(entry.dueDate).toLocaleDateString()}
-      </p>
-    </div>
-    <div className="flex flex-col items-end gap-2 self-start sm:ml-auto">
-      <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
-        entry.status === "overdue"
-          ? "bg-red-100 text-red-700"
-          : entry.status === "returned"
-          ? "bg-green-100 text-green-700"
-          : "bg-amber-100 text-amber-900"
-      }`}>
-        {entry.status}
-      </span>
-      {entry.status !== "returned" && (
-        <button
-          onClick={() => handleReturn(entry.borrowId)}
-          disabled={returningId === entry.borrowId}
-          className="text-xs font-semibold text-[#835500] hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {returningId === entry.borrowId ? "Returning..." : "Return"}
-        </button>
-      )}
-    </div>
-  </article>
-))}
+                        <article
+                          key={entry.borrowId}
+                          className="bg-white/70 backdrop-blur-xl border border-white/30 rounded-3xl p-4 shadow-sm flex flex-col sm:flex-row gap-4"
+                        >
+                          <div className="w-16 h-20 rounded-2xl bg-amber-100 flex items-center justify-center shrink-0">
+                            <PiBookOpenText className="h-7 w-7 text-[#041534]" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-sm font-semibold text-[#041534]">
+                              {entry.book.title}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              by {entry.book.author}
+                            </p>
+                            <p className="text-xs text-gray-400 mt-2">
+                              Due:{" "}
+                              {new Date(entry.dueDate).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <div className="flex flex-col items-end gap-2 self-start sm:ml-auto">
+                            <span
+                              className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
+                                entry.status === "overdue"
+                                  ? "bg-red-100 text-red-700"
+                                  : entry.status === "returned"
+                                    ? "bg-green-100 text-green-700"
+                                    : "bg-amber-100 text-amber-900"
+                              }`}
+                            >
+                              {entry.status}
+                            </span>
+                            {entry.status !== "returned" && (
+                              <button
+                                onClick={() => handleReturn(entry.borrowId)}
+                                disabled={returningId === entry.borrowId}
+                                className="text-xs font-semibold text-[#835500] hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                {returningId === entry.borrowId
+                                  ? "Returning..."
+                                  : "Return"}
+                              </button>
+                            )}
+                          </div>
+                        </article>
+                      ))}
                   </div>
                 )}
               </section>
@@ -435,13 +564,49 @@ const handleReturn = async (borrowId: string) => {
           {/* Right Sidebar */}
           <div className="lg:col-span-4 space-y-6">
             <div className="bg-white/70 backdrop-blur-xl border border-white/30 p-8 rounded-4xl shadow-sm">
-              <h3 className="text-xl font-semibold text-[#041534] mb-6">Quick Actions</h3>
+              <h3 className="text-xl font-semibold text-[#041534] mb-6">
+                Quick Actions
+              </h3>
               <div className="space-y-3">
                 {(
                   [
-                    { icon: <PiBookOpenText className="h-5 w-5 text-[#041534]" />, label: "Borrowing History", onClick: () => { setActiveTab("borrowed"); setBorrowView("history"); document.getElementById("borrowed")?.scrollIntoView({ behavior: "smooth", block: "start" }); } },
-                    { icon: <PiBellSimpleRinging className="h-5 w-5 text-[#041534]" />, label: "Due Date Alerts", onClick: () => { setActiveTab("borrowed"); setBorrowView("overdue"); document.getElementById("borrowed")?.scrollIntoView({ behavior: "smooth", block: "start" }); } },
-                  ] as { icon: React.ReactNode; label: string; onClick?: () => void }[]
+                    {
+                      icon: (
+                        <PiBookOpenText className="h-5 w-5 text-[#041534]" />
+                      ),
+                      label: "Borrowing History",
+                      onClick: () => {
+                        setActiveTab("borrowed");
+                        setBorrowView("history");
+                        document
+                          .getElementById("borrowed")
+                          ?.scrollIntoView({
+                            behavior: "smooth",
+                            block: "start",
+                          });
+                      },
+                    },
+                    {
+                      icon: (
+                        <PiBellSimpleRinging className="h-5 w-5 text-[#041534]" />
+                      ),
+                      label: "Due Date Alerts",
+                      onClick: () => {
+                        setActiveTab("borrowed");
+                        setBorrowView("overdue");
+                        document
+                          .getElementById("borrowed")
+                          ?.scrollIntoView({
+                            behavior: "smooth",
+                            block: "start",
+                          });
+                      },
+                    },
+                  ] as {
+                    icon: React.ReactNode;
+                    label: string;
+                    onClick?: () => void;
+                  }[]
                 ).map((action) => (
                   <button
                     key={action.label}
@@ -454,23 +619,34 @@ const handleReturn = async (borrowId: string) => {
                     <span className="text-sm font-semibold text-[#041534] group-hover:translate-x-1 transition-transform">
                       {action.label}
                     </span>
-                    <span className="ml-auto text-gray-300"><PiArrowRight className="h-4 w-4" /></span>
+                    <span className="ml-auto text-gray-300">
+                      <PiArrowRight className="h-4 w-4" />
+                    </span>
                   </button>
                 ))}
               </div>
 
               <div className="mt-6 p-6 bg-[#041534] text-white rounded-2xl relative overflow-hidden">
-                <div className="absolute -right-4 -bottom-4 text-white/10 text-[120px]"><PiBooks className="h-28 w-28" /></div>
-                <p className="text-xs font-semibold text-[#8392b7] mb-1 uppercase tracking-wider">Total Books</p>
-                <p className="text-3xl font-bold text-white mb-1">{totalBooks}</p>
+                <div className="absolute -right-4 -bottom-4 text-white/10 text-[120px]">
+                  <PiBooks className="h-28 w-28" />
+                </div>
+                <p className="text-xs font-semibold text-[#8392b7] mb-1 uppercase tracking-wider">
+                  Total Books
+                </p>
+                <p className="text-3xl font-bold text-white mb-1">
+                  {totalBooks}
+                </p>
                 <p className="text-xs text-[#8392b7]">in the library</p>
               </div>
             </div>
 
             <div className="bg-white/70 backdrop-blur-xl border border-white/30 p-8 rounded-4xl shadow-sm">
-              <h3 className="text-xl font-semibold text-[#041534] mb-2">Need Help?</h3>
+              <h3 className="text-xl font-semibold text-[#041534] mb-2">
+                Need Help?
+              </h3>
               <p className="text-sm text-gray-500 mb-6">
-                Our librarians are here to help you find what you're looking for.
+                Our librarians are here to help you find what you're looking
+                for.
               </p>
               <button className="w-full py-3 bg-white border border-gray-200 rounded-xl text-sm font-semibold text-[#041534] hover:bg-[#041534]/5 transition-all">
                 Chat with Us
