@@ -1,7 +1,6 @@
 import api from "@/lib/axios";
 import { Member } from "@/types/type";
 
-
 export interface User {
   _id: string;
   username: string;
