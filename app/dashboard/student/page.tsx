@@ -23,27 +23,21 @@ import { isAxiosError } from "axios";
 export default function StudentDashboard() {
   const [books, setBooks] = useState<Book[]>([]);
   const [borrowedBooks, setBorrowedBooks] = useState<Borrow[]>([]);
+  const [myBorrowedBookIds, setMyBorrowedBookIds] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalBooks, setTotalBooks] = useState(0);
-  const [activeTab, setActiveTab] = useState<
-    "catalog" | "my-books" | "borrowed"
-  >("catalog");
-  const [borrowView, setBorrowView] = useState<
-    "current" | "overdue" | "history"
-  >("current");
+  const [activeTab, setActiveTab] = useState<"catalog" | "my-books" | "borrowed">("catalog");
+  const [borrowView, setBorrowView] = useState<"current" | "overdue" | "history">("current");
   const [userName, setUserName] = useState("Student");
   const [borrowingId, setBorrowingId] = useState<string | null>(null);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
   const [returningId, setReturningId] = useState<string | null>(null);
-  const [toast, setToast] = useState<{
-    message: string;
-    type: "success" | "error";
-  } | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   const handleReturn = async (borrowId: string) => {
     setReturningId(borrowId);
@@ -54,10 +48,7 @@ export default function StudentDashboard() {
       setToast({ message: "Book returned successfully!", type: "success" });
     } catch (error: unknown) {
       if (isAxiosError(error)) {
-        setToast({
-          message: error.response?.data?.message || "Failed to return book",
-          type: "error",
-        });
+        setToast({ message: error.response?.data?.message || "Failed to return book", type: "error" });
       } else {
         setToast({ message: "Failed to return book", type: "error" });
       }
@@ -87,9 +78,13 @@ export default function StudentDashboard() {
 
   const fetchBorrowedBooks = async () => {
     try {
-      setBorrowedBooks([]); // clear first before fetching
+      setBorrowedBooks([]);
       const result = await BorrowService.getMyBorrows();
+      const activeBorrows = result.borrows?.filter(
+        (b) => b.status === "active" || b.status === "overdue"
+      ) || [];
       setBorrowedBooks(result.borrows || []);
+      setMyBorrowedBookIds(new Set(activeBorrows.map((b) => b.book._id)));
     } catch (error) {
       console.error("Failed to fetch borrowed books:", error);
     }
@@ -102,13 +97,11 @@ export default function StudentDashboard() {
     }
   }, [toast]);
 
-  // fetch on mount and when filters change
   useEffect(() => {
     fetchBooks();
     fetchBorrowedBooks();
   }, [currentPage, statusFilter]);
 
-  // search with debounce
   useEffect(() => {
     const timer = setTimeout(() => {
       setCurrentPage(1);
@@ -125,9 +118,7 @@ export default function StudentDashboard() {
   }, []);
 
   const visibleBooks =
-    activeTab === "borrowed"
-      ? books.filter((book) => book.status === "borrowed")
-      : books;
+    activeTab === "borrowed" ? books.filter((book) => book.status === "borrowed") : books;
 
   const handleBorrow = async (bookId: string) => {
     setBorrowingId(bookId);
@@ -138,10 +129,7 @@ export default function StudentDashboard() {
       setToast({ message: "Book borrowed successfully!", type: "success" });
     } catch (error: unknown) {
       if (isAxiosError(error)) {
-        setToast({
-          message: error.response?.data?.message || "Failed to borrow book",
-          type: "error",
-        });
+        setToast({ message: error.response?.data?.message || "Failed to borrow book", type: "error" });
       } else {
         setToast({ message: "Failed to borrow book", type: "error" });
       }
@@ -153,8 +141,7 @@ export default function StudentDashboard() {
   useEffect(() => {
     let storedName = getCookieValue("username");
     if (!storedName || storedName === "undefined") {
-      storedName =
-        typeof window !== "undefined" ? localStorage.getItem("username") : null;
+      storedName = typeof window !== "undefined" ? localStorage.getItem("username") : null;
     }
     if (storedName && storedName !== "undefined") {
       setUserName(storedName);
@@ -163,14 +150,10 @@ export default function StudentDashboard() {
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (
-        profileMenuRef.current &&
-        !profileMenuRef.current.contains(event.target as Node)
-      ) {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
         setProfileMenuOpen(false);
       }
     };
-
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
@@ -180,13 +163,9 @@ export default function StudentDashboard() {
       {/* Toast */}
       {toast && (
         <div className="fixed top-24 left-1/2 -translate-x-1/2 z-9999">
-          <div
-            className={`px-6 py-3 rounded-xl shadow-lg flex items-center gap-3 backdrop-blur-md ${
-              toast.type === "success"
-                ? "bg-green-500 text-white"
-                : "bg-red-500 text-white"
-            }`}
-          >
+          <div className={`px-6 py-3 rounded-xl shadow-lg flex items-center gap-3 backdrop-blur-md ${
+            toast.type === "success" ? "bg-green-500 text-white" : "bg-red-500 text-white"
+          }`}>
             <span className="text-sm">
               {toast.type === "success" ? (
                 <PiCheckCircle className="h-5 w-5" />
@@ -195,10 +174,7 @@ export default function StudentDashboard() {
               )}
             </span>
             <span className="text-sm font-medium">{toast.message}</span>
-            <button
-              onClick={() => setToast(null)}
-              className="ml-2 text-white/80 hover:text-white"
-            >
+            <button onClick={() => setToast(null)} className="ml-2 text-white/80 hover:text-white">
               <PiX className="h-4 w-4" />
             </button>
           </div>
@@ -212,9 +188,7 @@ export default function StudentDashboard() {
             type="button"
             onClick={() => {
               setActiveTab("catalog");
-              document
-                .getElementById("catalog")
-                ?.scrollIntoView({ behavior: "smooth", block: "start" });
+              document.getElementById("catalog")?.scrollIntoView({ behavior: "smooth", block: "start" });
             }}
             className="text-xl font-bold text-[#041534] hover:text-[#835500] transition-colors"
           >
@@ -245,10 +219,7 @@ export default function StudentDashboard() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <button
-            className="p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors"
-            aria-label="Notifications"
-          >
+          <button className="p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors" aria-label="Notifications">
             <PiBellSimpleRinging className="h-5 w-5" />
           </button>
           <div className="relative" ref={profileMenuRef}>
@@ -261,15 +232,11 @@ export default function StudentDashboard() {
             >
               <PiUserCircle className="h-7 w-7" />
             </button>
-
             {profileMenuOpen && (
               <div className="absolute right-0 mt-2 w-48 rounded-2xl border border-gray-200 bg-white/95 shadow-xl backdrop-blur-xl py-2 z-50">
                 <button
                   type="button"
-                  onClick={() => {
-                    setProfileMenuOpen(false);
-                    AuthService.logout();
-                  }}
+                  onClick={() => { setProfileMenuOpen(false); AuthService.logout(); }}
                   className="w-full px-4 py-2 text-left text-sm font-semibold text-[#041534] hover:bg-gray-100 transition-colors"
                 >
                   Sign Out
@@ -314,10 +281,7 @@ export default function StudentDashboard() {
                   <div className="flex gap-3">
                     <select
                       value={statusFilter}
-                      onChange={(e) => {
-                        setStatusFilter(e.target.value);
-                        setCurrentPage(1);
-                      }}
+                      onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
                       className="px-4 py-3 bg-white/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#041534]/20 transition-all outline-none text-sm font-semibold min-w-32.5"
                     >
                       <option value="all">All Status</option>
@@ -328,37 +292,36 @@ export default function StudentDashboard() {
                 </div>
               </div>
 
-              {/* Book Catalog */}
+              {/* Book Catalog Header */}
               <div className="flex justify-between items-center mb-6">
                 <div>
                   <h2 className="text-3xl font-bold text-[#041534]">
-                    {activeTab === "borrowed"
-                      ? "Borrowed Books"
-                      : activeTab === "my-books"
-                        ? "My Books"
-                        : "Book Catalog"}
-                  </h2>
-                  <p className="text-sm text-gray-500 mt-1">
-                    {activeTab === "borrowed"
-                      ? "Books currently borrowed by you."
-                      : activeTab === "my-books"
-                        ? "See available and borrowed books in one view."
-                        : "Browse the full catalog and manage your reading list."}
-                  </p>
+  {activeTab === "borrowed"
+    ? visibleBooks.length > 0 && myBorrowedBookIds.size === 0
+      ? "Unavailable Books"
+      : "Borrowed Books"
+    : activeTab === "my-books"
+    ? "My Books"
+    : "Book Catalog"}
+</h2>
+<p className="text-sm text-gray-500 mt-1">
+  {activeTab === "borrowed"
+    ? visibleBooks.length > 0 && myBorrowedBookIds.size === 0
+      ? "These books are currently unavailable to borrow."
+      : "Books currently borrowed by you."
+    : activeTab === "my-books"
+    ? "See available and borrowed books in one view."
+    : "Browse the full catalog and manage your reading list."}
+</p>
                 </div>
-                <span className="text-sm text-gray-500">
-                  {visibleBooks.length} books
-                </span>
+                <span className="text-sm text-gray-500">{visibleBooks.length} books</span>
               </div>
 
               {/* Loading State */}
               {loading ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                   {[1, 2, 3, 4, 5, 6].map((n) => (
-                    <div
-                      key={n}
-                      className="bg-white/70 border border-white/30 p-4 rounded-3xl animate-pulse"
-                    >
+                    <div key={n} className="bg-white/70 border border-white/30 p-4 rounded-3xl animate-pulse">
                       <div className="aspect-3/4 bg-gray-200 rounded-2xl mb-4"></div>
                       <div className="h-4 bg-gray-200 rounded mb-2"></div>
                       <div className="h-3 bg-gray-100 rounded mb-4 w-2/3"></div>
@@ -368,13 +331,9 @@ export default function StudentDashboard() {
                 </div>
               ) : visibleBooks.length === 0 ? (
                 <div className="text-center py-20 text-gray-400">
-                  <p className="text-5xl mb-4">
-                    <PiBookOpenText className="mx-auto" />
-                  </p>
+                  <PiBookOpenText className="mx-auto h-12 w-12 mb-4" />
                   <p className="text-lg font-semibold">No books found</p>
-                  <p className="text-sm mt-1">
-                    Try a different search or filter
-                  </p>
+                  <p className="text-sm mt-1">Try a different search or filter</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -384,33 +343,32 @@ export default function StudentDashboard() {
                       className="bg-white/70 backdrop-blur-xl border border-white/30 p-4 rounded-3xl hover:-translate-y-1 transition-all duration-300 flex flex-col group shadow-sm"
                     >
                       <div className="relative aspect-3/4 rounded-2xl overflow-hidden shadow-md mb-4 bg-gray-100 flex items-center justify-center">
-                        <span className="text-6xl">
-                          <PiBookOpenText className="h-14 w-14 text-[#041534]/40" />
-                        </span>
-                        <div
-                          className={`absolute top-3 right-3 backdrop-blur-md text-xs font-bold px-3 py-1 rounded-full ${
-                            book.status === "available"
-                              ? "bg-amber-400/90 text-amber-900"
-                              : "bg-gray-200/90 text-gray-600"
-                          }`}
-                        >
+                        <PiBookOpenText className="h-14 w-14 text-[#041534]/40" />
+                        {/* Three state badge */}
+                        <div className={`absolute top-3 right-3 backdrop-blur-md text-xs font-bold px-3 py-1 rounded-full ${
+                          book.status === "available"
+                            ? "bg-amber-400/90 text-amber-900"
+                            : myBorrowedBookIds.has(book._id)
+                            ? "bg-blue-100 text-blue-700"
+                            : "bg-gray-200/90 text-gray-600"
+                        }`}>
                           {book.status === "available"
                             ? "Available"
-                            : "Borrowed"}
+                            : myBorrowedBookIds.has(book._id)
+                            ? "Borrowed by you"
+                            : "Unavailable"}
                         </div>
                       </div>
                       <div className="grow">
-                        <h3 className="text-sm font-semibold text-[#041534] line-clamp-1">
-                          {book.title}
-                        </h3>
-                        <p className="text-xs text-gray-500 mt-1">
-                          {book.author}
-                        </p>
+                        <h3 className="text-sm font-semibold text-[#041534] line-clamp-1">{book.title}</h3>
+                        <p className="text-xs text-gray-500 mt-1">{book.author}</p>
                         <div className="flex justify-between items-center mt-2 text-xs text-gray-400">
                           <span>{book.genre}</span>
                           <span>{book.publishedYear}</span>
                         </div>
                       </div>
+
+                      {/* Three state button */}
                       {book.status === "available" ? (
                         <button
                           onClick={() => handleBorrow(book._id)}
@@ -418,6 +376,20 @@ export default function StudentDashboard() {
                           className="mt-4 w-full bg-[#1b2a4a] text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-[#041534] transition-colors active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
                         >
                           {borrowingId === book._id ? "Borrowing..." : "Borrow"}
+                        </button>
+                      ) : myBorrowedBookIds.has(book._id) ? (
+                        <button
+                          onClick={() => {
+                            const borrow = borrowedBooks.find(
+                              (b) => b.book._id === book._id &&
+                              (b.status === "active" || b.status === "overdue")
+                            );
+                            if (borrow) handleReturn(borrow.borrowId);
+                          }}
+                          disabled={returningId !== null}
+                          className="mt-4 w-full bg-amber-500 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-amber-600 transition-colors active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                          {returningId !== null ? "Returning..." : "Return"}
                         </button>
                       ) : (
                         <button
@@ -438,7 +410,7 @@ export default function StudentDashboard() {
                   <button
                     onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                     disabled={currentPage === 1}
-                    className="px-5 py-2 rounded-full bg-white border border-gray-200 shadow-sm text-sm font-semibold text-[#041534] hover:shadow-md disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                    className="px-5 py-2 rounded-full bg-white border border-gray-200 shadow-sm text-sm font-semibold text-[#041534] hover:shadow-md disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1"
                   >
                     <PiArrowLeft className="h-4 w-4" /> Previous
                   </button>
@@ -446,11 +418,9 @@ export default function StudentDashboard() {
                     Page {currentPage} of {totalPages}
                   </span>
                   <button
-                    onClick={() =>
-                      setCurrentPage((p) => Math.min(totalPages, p + 1))
-                    }
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                     disabled={currentPage === totalPages}
-                    className="px-5 py-2 rounded-full bg-white border border-gray-200 shadow-sm text-sm font-semibold text-[#041534] hover:shadow-md disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                    className="px-5 py-2 rounded-full bg-white border border-gray-200 shadow-sm text-sm font-semibold text-[#041534] hover:shadow-md disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1"
                   >
                     Next <PiArrowRight className="h-4 w-4" />
                   </button>
@@ -462,9 +432,7 @@ export default function StudentDashboard() {
               <section id="borrowed">
                 <div className="flex justify-between items-center mb-6">
                   <div>
-                    <h2 className="text-3xl font-bold text-[#041534]">
-                      My Borrowed Books
-                    </h2>
+                    <h2 className="text-3xl font-bold text-[#041534]">My Borrowed Books</h2>
                     <div className="mt-3 flex gap-2">
                       <button
                         onClick={() => setBorrowView("current")}
@@ -489,25 +457,17 @@ export default function StudentDashboard() {
                 </div>
                 {borrowedBooks.length === 0 ? (
                   <div className="text-center py-16 bg-white/70 backdrop-blur-xl border border-white/30 rounded-3xl">
-                    <p className="text-5xl mb-4">
-                      <PiBooks className="mx-auto" />
-                    </p>
-                    <p className="text-lg font-semibold text-[#041534]">
-                      No borrowed books yet
-                    </p>
-                    <p className="text-sm text-gray-500 mt-1">
-                      Browse the catalog and borrow a book
-                    </p>
+                    <PiBooks className="mx-auto h-12 w-12 mb-4 text-gray-300" />
+                    <p className="text-lg font-semibold text-[#041534]">No borrowed books yet</p>
+                    <p className="text-sm text-gray-500 mt-1">Browse the catalog and borrow a book</p>
                   </div>
                 ) : (
                   <div className="space-y-4">
                     {borrowedBooks
                       .filter((entry) => {
-                        if (borrowView === "overdue")
-                          return entry.status === "overdue";
-                        if (borrowView === "current")
-                          return entry.status !== "returned";
-                        return true; // history -> show all
+                        if (borrowView === "overdue") return entry.status === "overdue";
+                        if (borrowView === "current") return entry.status !== "returned";
+                        return true;
                       })
                       .map((entry) => (
                         <article
@@ -518,27 +478,20 @@ export default function StudentDashboard() {
                             <PiBookOpenText className="h-7 w-7 text-[#041534]" />
                           </div>
                           <div className="flex-1">
-                            <p className="text-sm font-semibold text-[#041534]">
-                              {entry.book.title}
-                            </p>
-                            <p className="text-xs text-gray-500 mt-1">
-                              by {entry.book.author}
-                            </p>
+                            <p className="text-sm font-semibold text-[#041534]">{entry.book.title}</p>
+                            <p className="text-xs text-gray-500 mt-1">by {entry.book.author}</p>
                             <p className="text-xs text-gray-400 mt-2">
-                              Due:{" "}
-                              {new Date(entry.dueDate).toLocaleDateString()}
+                              Due: {new Date(entry.dueDate).toLocaleDateString()}
                             </p>
                           </div>
                           <div className="flex flex-col items-end gap-2 self-start sm:ml-auto">
-                            <span
-                              className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
-                                entry.status === "overdue"
-                                  ? "bg-red-100 text-red-700"
-                                  : entry.status === "returned"
-                                    ? "bg-green-100 text-green-700"
-                                    : "bg-amber-100 text-amber-900"
-                              }`}
-                            >
+                            <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
+                              entry.status === "overdue"
+                                ? "bg-red-100 text-red-700"
+                                : entry.status === "returned"
+                                ? "bg-green-100 text-green-700"
+                                : "bg-amber-100 text-amber-900"
+                            }`}>
                               {entry.status}
                             </span>
                             {entry.status !== "returned" && (
@@ -547,9 +500,7 @@ export default function StudentDashboard() {
                                 disabled={returningId === entry.borrowId}
                                 className="text-xs font-semibold text-[#835500] hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
                               >
-                                {returningId === entry.borrowId
-                                  ? "Returning..."
-                                  : "Return"}
+                                {returningId === entry.borrowId ? "Returning..." : "Return"}
                               </button>
                             )}
                           </div>
@@ -564,49 +515,29 @@ export default function StudentDashboard() {
           {/* Right Sidebar */}
           <div className="lg:col-span-4 space-y-6">
             <div className="bg-white/70 backdrop-blur-xl border border-white/30 p-8 rounded-4xl shadow-sm">
-              <h3 className="text-xl font-semibold text-[#041534] mb-6">
-                Quick Actions
-              </h3>
+              <h3 className="text-xl font-semibold text-[#041534] mb-6">Quick Actions</h3>
               <div className="space-y-3">
                 {(
                   [
                     {
-                      icon: (
-                        <PiBookOpenText className="h-5 w-5 text-[#041534]" />
-                      ),
+                      icon: <PiBookOpenText className="h-5 w-5 text-[#041534]" />,
                       label: "Borrowing History",
                       onClick: () => {
                         setActiveTab("borrowed");
                         setBorrowView("history");
-                        document
-                          .getElementById("borrowed")
-                          ?.scrollIntoView({
-                            behavior: "smooth",
-                            block: "start",
-                          });
+                        document.getElementById("borrowed")?.scrollIntoView({ behavior: "smooth", block: "start" });
                       },
                     },
                     {
-                      icon: (
-                        <PiBellSimpleRinging className="h-5 w-5 text-[#041534]" />
-                      ),
+                      icon: <PiBellSimpleRinging className="h-5 w-5 text-[#041534]" />,
                       label: "Due Date Alerts",
                       onClick: () => {
                         setActiveTab("borrowed");
                         setBorrowView("overdue");
-                        document
-                          .getElementById("borrowed")
-                          ?.scrollIntoView({
-                            behavior: "smooth",
-                            block: "start",
-                          });
+                        document.getElementById("borrowed")?.scrollIntoView({ behavior: "smooth", block: "start" });
                       },
                     },
-                  ] as {
-                    icon: React.ReactNode;
-                    label: string;
-                    onClick?: () => void;
-                  }[]
+                  ] as { icon: React.ReactNode; label: string; onClick?: () => void }[]
                 ).map((action) => (
                   <button
                     key={action.label}
@@ -627,26 +558,19 @@ export default function StudentDashboard() {
               </div>
 
               <div className="mt-6 p-6 bg-[#041534] text-white rounded-2xl relative overflow-hidden">
-                <div className="absolute -right-4 -bottom-4 text-white/10 text-[120px]">
+                <div className="absolute -right-4 -bottom-4 text-white/10">
                   <PiBooks className="h-28 w-28" />
                 </div>
-                <p className="text-xs font-semibold text-[#8392b7] mb-1 uppercase tracking-wider">
-                  Total Books
-                </p>
-                <p className="text-3xl font-bold text-white mb-1">
-                  {totalBooks}
-                </p>
+                <p className="text-xs font-semibold text-[#8392b7] mb-1 uppercase tracking-wider">Total Books</p>
+                <p className="text-3xl font-bold text-white mb-1">{totalBooks}</p>
                 <p className="text-xs text-[#8392b7]">in the library</p>
               </div>
             </div>
 
             <div className="bg-white/70 backdrop-blur-xl border border-white/30 p-8 rounded-4xl shadow-sm">
-              <h3 className="text-xl font-semibold text-[#041534] mb-2">
-                Need Help?
-              </h3>
+              <h3 className="text-xl font-semibold text-[#041534] mb-2">Need Help?</h3>
               <p className="text-sm text-gray-500 mb-6">
-                Our librarians are here to help you find what you're looking
-                for.
+                Our librarians are here to help you find what you&apos;re looking for.
               </p>
               <button className="w-full py-3 bg-white border border-gray-200 rounded-xl text-sm font-semibold text-[#041534] hover:bg-[#041534]/5 transition-all">
                 Chat with Us
